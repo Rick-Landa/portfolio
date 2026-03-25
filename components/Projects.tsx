@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
-import { Github, ExternalLink } from "lucide-react";
+import { useRef, useState, useEffect, useCallback } from "react";
+import { motion, useInView, AnimatePresence } from "framer-motion";
+import { Github, ExternalLink, ChevronLeft, ChevronRight, X, Expand } from "lucide-react";
+import Image from "next/image";
 import { projects, type Project } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -47,12 +48,195 @@ function getStackColor(tech: string): string {
   return stackColorMap[tech] ?? "bg-white/5 text-white/60";
 }
 
+// ── Lightbox modal ────────────────────────────────────────────────────────────
+function Lightbox({
+  images,
+  startIndex,
+  onClose,
+}: {
+  images: string[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const [current, setCurrent] = useState(startIndex);
+
+  const prev = useCallback(() => setCurrent((i) => (i - 1 + images.length) % images.length), [images.length]);
+  const next = useCallback(() => setCurrent((i) => (i + 1) % images.length), [images.length]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") prev();
+      else if (e.key === "ArrowRight") next();
+      else if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [prev, next, onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      {/* Close */}
+      <button
+        onClick={onClose}
+        aria-label="Cerrar"
+        className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+      >
+        <X size={20} />
+      </button>
+
+      {/* Counter */}
+      <span className="absolute top-5 left-1/2 -translate-x-1/2 text-xs text-white/60">
+        {current + 1} / {images.length}
+      </span>
+
+      {/* Image */}
+      <motion.div
+        key={current}
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2 }}
+        className="relative w-full max-w-5xl aspect-video rounded-xl overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Image
+          src={images[current]}
+          alt={`Screenshot ${current + 1}`}
+          fill
+          className="object-contain"
+          sizes="100vw"
+          quality={100}
+          priority
+          unoptimized
+        />
+      </motion.div>
+
+      {/* Prev / Next */}
+      {images.length > 1 && (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); prev(); }}
+            aria-label="Imagen anterior"
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); next(); }}
+            aria-label="Imagen siguiente"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+          >
+            <ChevronRight size={24} />
+          </button>
+          {/* Dots */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
+                aria-label={`Ir a imagen ${i + 1}`}
+                className={cn(
+                  "w-2 h-2 rounded-full transition-colors duration-200",
+                  i === current ? "bg-white" : "bg-white/40"
+                )}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </motion.div>
+  );
+}
+
+// ── Thumbnail carousel (inside card) ─────────────────────────────────────────
+function ProjectImageCarousel({
+  images,
+  onExpand,
+}: {
+  images: string[];
+  onExpand: (index: number) => void;
+}) {
+  const [current, setCurrent] = useState(0);
+
+  const prev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setCurrent((i) => (i - 1 + images.length) % images.length);
+  };
+  const next = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setCurrent((i) => (i + 1) % images.length);
+  };
+
+  return (
+    <div
+      className="relative w-full aspect-video rounded-xl overflow-hidden bg-white/5 group/carousel cursor-zoom-in"
+      onClick={() => onExpand(current)}
+    >
+      <Image
+        src={images[current]}
+        alt={`Screenshot ${current + 1}`}
+        fill
+        className="object-cover object-top transition-transform duration-300 group-hover/carousel:scale-105"
+        sizes="(max-width: 768px) 100vw, 50vw"
+        unoptimized
+      />
+
+      {/* Expand hint */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-200 bg-black/20">
+        <div className="p-2 rounded-full bg-black/50 text-white">
+          <Expand size={18} />
+        </div>
+      </div>
+
+      {images.length > 1 && (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); prev(e); }}
+            aria-label="Imagen anterior"
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-200 hover:bg-black/70 z-10"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); next(e); }}
+            aria-label="Imagen siguiente"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-200 hover:bg-black/70 z-10"
+          >
+            <ChevronRight size={16} />
+          </button>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10" onClick={(e) => e.stopPropagation()}>
+            {images.map((_, i) => (
+              <button
+                key={i}
+                onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
+                aria-label={`Ir a imagen ${i + 1}`}
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full transition-colors duration-200",
+                  i === current ? "bg-white" : "bg-white/40"
+                )}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Project card ──────────────────────────────────────────────────────────────
 interface ProjectCardProps {
   project: Project;
   index: number;
+  onExpand: (images: string[], index: number) => void;
 }
 
-function ProjectCard({ project, index }: ProjectCardProps) {
+function ProjectCard({ project, index, onExpand }: ProjectCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
 
@@ -62,7 +246,7 @@ function ProjectCard({ project, index }: ProjectCardProps) {
       initial={{ opacity: 0, y: 40 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group relative glass-card p-6 flex flex-col gap-4 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-violet-500/10 hover:border-violet-500/20 transition-all duration-300 cursor-default"
+      className="group relative glass-card p-6 flex flex-col gap-4 h-full hover:-translate-y-1.5 hover:shadow-xl hover:shadow-violet-500/10 hover:border-violet-500/20 transition-all duration-300 cursor-default"
       aria-label={`Proyecto: ${project.name}`}
     >
       {/* Hover glow overlay */}
@@ -74,6 +258,14 @@ function ProjectCard({ project, index }: ProjectCardProps) {
         }}
         aria-hidden="true"
       />
+
+      {/* Image carousel */}
+      {project.images && project.images.length > 0 && (
+        <ProjectImageCarousel
+          images={project.images}
+          onExpand={(i) => onExpand(project.images!, i)}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
@@ -142,9 +334,11 @@ function ProjectCard({ project, index }: ProjectCardProps) {
   );
 }
 
+// ── Section ───────────────────────────────────────────────────────────────────
 export default function Projects() {
   const headerRef = useRef<HTMLDivElement>(null);
   const headerInView = useInView(headerRef, { once: true, margin: "-80px" });
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
 
   return (
     <section
@@ -179,17 +373,32 @@ export default function Projects() {
 
         {/* Project grid */}
         <div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-stretch"
           role="list"
           aria-label="Lista de proyectos"
         >
           {projects.map((project, index) => (
-            <div key={project.name} role="listitem">
-              <ProjectCard project={project} index={index} />
+            <div key={project.name} role="listitem" className="flex">
+              <ProjectCard
+                project={project}
+                index={index}
+                onExpand={(images, i) => setLightbox({ images, index: i })}
+              />
             </div>
           ))}
         </div>
       </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightbox && (
+          <Lightbox
+            images={lightbox.images}
+            startIndex={lightbox.index}
+            onClose={() => setLightbox(null)}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }

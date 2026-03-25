@@ -6,6 +6,7 @@ export interface Project {
   stack: string[];
   github: string;
   demo: string | null;
+  images?: string[];
 }
 
 export interface SkillCategory {
@@ -32,6 +33,12 @@ export const projects: Project[] = [
     ],
     github: "https://github.com/Rick-Landa/Control-Dictamen-Frontend",
     demo: null,
+    images: [
+      "/images/dictamenes/dictamen1.jpg",
+      "/images/dictamenes/dictamen2.jpg",
+      "/images/dictamenes/dictamen4.jpg",
+      "/images/dictamenes/dictamen5.jpg",
+    ],
   },
   {
     name: "Sistema LINA",
@@ -50,6 +57,12 @@ export const projects: Project[] = [
     ],
     github: "https://github.com/Rick-Landa/front-sistema-lina",
     demo: null,
+    images: [
+      "/images/lina/login.jpeg",
+      "/images/lina/consultar.jpeg",
+      "/images/lina/empezar.jpeg",
+      "/images/lina/admin.jpeg",
+    ],
   },
   {
     name: "CaniColectivo",
@@ -67,6 +80,13 @@ export const projects: Project[] = [
     ],
     github: "https://github.com/jjcm296/CaniColectivo",
     demo: null,
+    images: [
+      "/images/cani/cani1.jpg",
+      "/images/cani/cani2.jpg",
+      "/images/cani/cani3.jpg",
+      "/images/cani/cani4.jpeg",
+      "/images/cani/cani5.jpeg",
+    ],
   },
   {
     name: "Viayage",
